@@ -6,7 +6,7 @@ header{background:#193c33;color:#f4f8ed;border-bottom:4px solid #c5df89}.wrap{ma
 @media(max-width:760px){.wrap{padding:0 12px}.mast{padding:17px 2px}.mast a{font-size:12px}.layout{display:flex;flex-direction:column;gap:12px;margin:14px auto}.panel,.card{width:100%}.panel{padding:12px 15px}.panel h2{font-size:16px;margin:0}.setup{display:grid;grid-template-columns:1fr 1fr;gap:8px}.panel label{margin:4px 0}.panel .primary{margin-top:9px}.stat{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;padding-top:7px}.stat p{gap:5px;margin:0}.note{margin-top:6px}.track{margin-bottom:14px}.foot .tools{order:3;width:100%;justify-content:center}.original{padding:2px}.compact .choice{padding:8px}.foot{gap:7px}.card{padding:15px}}
 </style>
 <header><div class="wrap"><div class="mast"><div><small>115 學年度　工業類技藝競賽</small><h1>機器人學科練習室</h1></div><a href="https://drive.google.com/file/d/1WikRbXLbtB7UeXuun_V_enN96POf_dhy/view" target="_blank" rel="noopener">官方題庫 ↗</a></div></div></header>
-<main class="wrap"><div class="layout"><aside class="panel"><h2>練習設定</h2><div class="setup"><div><label for="section">題庫範圍</label><select id="section"></select></div><div><label for="mode">出題方式</label><select id="mode"><option value="seq">依題號練習</option><option value="random">全範圍隨機排序</option><option value="quick">隨機抽 20 題</option><option value="wrong">錯題重練</option></select></div></div><button class="primary" id="start">開始新一輪</button><div class="stat"><p>累計練過 <b id="seen"></b></p><p>待複習錯題 <b id="miss"></b></p></div><p id="status" class="note" role="status"></p></aside>
+<main class="wrap"><div class="layout"><aside class="panel"><h2>練習設定</h2><div class="setup"><div><label for="section">題庫範圍</label><select id="section"></select></div><div><label for="mode">出題方式</label><select id="mode"><option value="seq">依題號練習</option><option value="random">全範圍隨機排序</option><option value="quick">隨機抽 20 題</option><option value="wrong">錯題重練</option><option value="show">直接顯示答案</option></select></div></div><button class="primary" id="start">開始新一輪</button><div class="stat"><p>累計練過 <b id="seen"></b></p><p>待複習錯題 <b id="miss"></b></p></div><p id="status" class="note" role="status"></p></aside>
 <section class="card" aria-label="作答區"><div id="task"><div class="row"><span class="tag" id="session"></span><span class="num" id="counter"></span></div><div class="track"><div id="bar"></div></div>
 <div class="row"><span class="meta" id="chapter"></span><button id="source" class="textbtn">查看原題</button></div><h2 tabindex="-1" class="stem" id="stem"></h2><button class="original" id="figure" aria-label="放大原題圖片"><img id="fig" alt="官方原題與選項，點選可放大"></button><div id="choices" class="options"></div><div class="feedback" id="feedback" role="status"></div><section id="explanation" hidden style="background:#edf5e8;border-radius:10px;padding:16px;margin:16px 0"><strong>答案解析</strong><p id="reason" style="margin:7px 0"></p><small>學習提示由 AI 整理，判分依官方題庫。</small></section><div class="foot"><button id="prev">上一題</button><div class="tools"><label for="jump">跳至本輪</label><input type="number" min="1" id="jump" aria-label="本輪題目序號"><button id="go">前往</button></div><button class="primary" id="next">下一題 →</button></div></div>
 <div id="result" class="summary" hidden><h2>本輪成績</h2><p id="score"></p><button id="review">回看本輪</button><button id="retry" class="primary">重練本輪錯題</button><button id="resume">繼續未答題</button></div></section></div>
@@ -18,7 +18,7 @@ header{background:#193c33;color:#f4f8ed;border-bottom:4px solid #c5df89}.wrap{ma
 const bank=JSON.parse(document.getElementById('bank').textContent);
 const chapters=['一般概念','機構和電機','感測系統','馬達和運動控制','軟體程式和其他'];
 const letters='ABCD',ids=bank.map((_,i)=>i),el=id=>document.getElementById(id),key='tw.robot.115.0827.practice.v1';
-const modes={seq:'依題號練習',random:'隨機練習',quick:'隨機 20 題',wrong:'錯題重練'};
+const modes={seq:'依題號練習',random:'隨機練習',quick:'隨機 20 題',wrong:'錯題重練',show:'直接顯示答案'};
 el('section').add(new Option('全部單元（563 題）','all'));
 chapters.forEach((c,i)=>el('section').add(new Option(c+'（'+bank.filter(q=>q.s===i).length+' 題）',i)));
 const makeRun=(order,scope,mode)=>({order,scope,mode,at:0,picks:{},end:false});
@@ -39,11 +39,11 @@ function start(){
  begin(order,scope,mode);
 }
 function move(to){if(to<0||to>=run.order.length)return;run.at=to;run.end=false;persist();el('stem').focus({preventScroll:true})}
-function answer(k){const id=run.order[run.at];if(run.end||Object.hasOwn(run.picks,id))return;run.picks[id]=k;history[id]=k===bank[id].a;persist()}
-function next(){if(run.at<run.order.length-1){move(run.at+1)}else{run.end=true;persist()}}
+function answer(k){const id=run.order[run.at];if(run.mode==='show'||run.end||Object.hasOwn(run.picks,id))return;run.picks[id]=k;history[id]=k===bank[id].a;persist()}
+function next(){if(run.mode==='show'&&run.at===run.order.length-1){move(0);return}if(run.at<run.order.length-1){move(run.at+1)}else{run.end=true;persist()}}
 function showOriginal(){const q=bank[run.order[run.at]];el('caption').textContent=chapters[q.s]+' · 第 '+q.n+' 題 · PDF 第 '+q.p+' 頁';el('full').src='data:image/webp;base64,'+q.img;el('modal').showModal()}
 function draw(){
- const {order,at,picks}=run,id=order[at],q=bank[id],pick=picks[id],answered=pick!==undefined;
+ const {order,at,picks}=run,id=order[at],q=bank[id],pick=picks[id],showAnswer=run.mode==='show',answered=showAnswer||pick!==undefined;
  el('status').textContent=saveOK?'進度會儲存在這個瀏覽器。':'瀏覽器未開放儲存，本次仍可練習。';
  el('seen').textContent=Object.keys(history).length+' / 563';el('miss').textContent=Object.values(history).filter(x=>x===false).length+' 題';
  el('task').hidden=run.end;el('result').hidden=!run.end;
@@ -53,7 +53,7 @@ function draw(){
    el('retry').hidden=done===correct;el('resume').hidden=done===order.length;return;
  }
  el('session').textContent=modes[run.mode];el('counter').textContent=(at+1)+' / '+order.length;
- el('bar').style.width=100*Object.keys(picks).length/order.length+'%';
+ el('bar').style.width=100*(showAnswer?at+1:Object.keys(picks).length)/order.length+'%';
  el('chapter').textContent=chapters[q.s]+'　／　原題 '+q.n;
  el('stem').textContent=q.visual?'依原題選出答案':q.q;
  el('figure').hidden=!q.visual;
@@ -67,9 +67,9 @@ function draw(){
     if(answered&&(i===q.a||i===pick)){const good=i===q.a,mark=document.createElement('em');btn.classList.add(good?'ok':'err');mark.textContent=good?'正解':'你的答案';btn.append(mark)}
     list.append(btn)
  }
- el('feedback').classList.toggle('bad',answered&&pick!==q.a);el('feedback').textContent=answered?(pick===q.a?'答對了！':'答錯了。正確答案是 '+letters[q.a]+'。'):'';
+ el('feedback').classList.toggle('bad',answered&&!showAnswer&&pick!==q.a);el('feedback').textContent=showAnswer?'正確答案是 '+letters[q.a]+'。':answered?(pick===q.a?'答對了！':'答錯了。正確答案是 '+letters[q.a]+'。'):'';
  el('explanation').hidden=!answered;el('reason').textContent=answered?q.explanation:'';
- el('prev').disabled=at===0;el('next').textContent=at===order.length-1?'查看本輪成績':'下一題 →';el('jump').max=order.length;el('jump').value=at+1;
+ el('prev').disabled=at===0;el('next').textContent=at===order.length-1?(showAnswer?'回到第一題':'查看本輪成績'):'下一題 →';el('jump').max=order.length;el('jump').value=at+1;
 }
 el('start').onclick=start;el('prev').onclick=()=>move(run.at-1);el('next').onclick=next;
 el('go').onclick=()=>{if(el('jump').value&&el('jump').reportValidity())move(Number(el('jump').value)-1)};
